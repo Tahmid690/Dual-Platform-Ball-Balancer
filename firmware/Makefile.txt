@@ -1,0 +1,44 @@
+MCU = atmega32
+F_CPU ?= 8000000UL
+CC = avr-gcc
+OBJCOPY = avr-objcopy
+CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Wall -Os
+PROGRAMMER = usbasp
+
+SRCS = main.c uart.c servo.c i2c.c vl53l0x.c
+OBJS = $(SRCS:.c=.o)
+TARGET = main
+
+COLLECT_SRCS = data_collect.c uart.c servo.c i2c.c vl53l0x.c
+COLLECT_OBJS = $(COLLECT_SRCS:.c=.o)
+
+all: $(TARGET).hex data_collect.hex
+
+$(TARGET).elf: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $@
+
+data_collect.elf: $(COLLECT_OBJS)
+	$(CC) $(CFLAGS) $(COLLECT_OBJS) -o $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET).hex: $(TARGET).elf
+	$(OBJCOPY) -O ihex -R .eeprom $< $@
+
+data_collect.hex: data_collect.elf
+	$(OBJCOPY) -O ihex -R .eeprom $< $@
+
+flash: $(TARGET).hex
+	avrdude -c $(PROGRAMMER) -p m32 -U flash:w:$(TARGET).hex:i 
+
+flash-collect: data_collect.hex
+	avrdude -c $(PROGRAMMER) -p m32 -U flash:w:data_collect.hex:i
+
+flash-slow: $(TARGET).hex
+	avrdude -c $(PROGRAMMER) -p m32 -U flash:w:$(TARGET).hex:i -B 32kHz
+
+clean:
+	rm -f *.o *.elf *.hex
+
+.PHONY: all flash flash-collect flash-slow clean

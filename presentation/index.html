@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Underactuated Dual-Cart Balancing System — CSE 316</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
+    rel="stylesheet" />
+  <!-- MathJax for rendering LaTeX equations -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+  <style>
+    /* ===== MODERN ACADEMIC PRESENTATION SYSTEM ===== */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary: #1E3A8A;
+      /* Deep Indigo */
+      --primary-light: #3B82F6;
+      /* Vibrant Blue */
+      --accent: #0D9488;
+      /* Teal Accent */
+      --danger: #E11D48;
+      /* Rose Alert */
+      --bg-page: #F1F5F9;
+      --bg-slide: #FFFFFF;
+      --bg-card: #F8FAFC;
+      --border: #E2E8F0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-sub: #64748B;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+      --radius: 8px;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html,
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-size: 15px;
+      line-height: 1.5;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== SLIDE CONTAINER ===== */
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .slide {
+      position: absolute;
+      width: min(94vw, 1100px);
+      height: min(90vh, 660px);
+      background: var(--bg-slide);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    /* ===== PROGRESS BAR ===== */
+    .top-progress-bar {
+      height: 4px;
+      background: var(--border);
+      width: 100%;
+      position: relative;
+    }
+
+    .top-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--primary-light));
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* ===== HEADER ===== */
+    .slide-header {
+      padding: 16px 28px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title .tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--primary-light);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .slide-counter {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      font-family: var(--font-mono);
+      background: var(--bg-card);
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    /* ===== SLIDE BODY ===== */
+    .slide-body {
+      flex: 1;
+      padding: 24px 28px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== CARDS & BLOCKS ===== */
+    .card-grid {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-grid.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .card-grid.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+
+    .card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-text {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .card--highlight {
+      border-left: 4px solid var(--primary-light);
+    }
+
+    .card--accent {
+      border-left: 4px solid var(--accent);
+      background: #F0FDF4;
+    }
+
+    .card--alert {
+      border-left: 4px solid var(--danger);
+      background: #FFF1F2;
+    }
+
+    /* ===== SIMPLE IMPLEMENTATION TIMELINE ===== */
+    .timeline-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .step-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--primary-light);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step-number {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .step-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .step-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* ===== TABLES ===== */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    table.data-table th {
+      background: var(--primary);
+      color: #FFFFFF;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    table.data-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    table.data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.data-table tr:nth-child(even) td {
+      background: var(--bg-card);
+    }
+
+    table.data-table td.code {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* ===== LISTS ===== */
+    ul.bullet-list,
+    ol.num-list {
+      padding-left: 18px;
+    }
+
+    ul.bullet-list li,
+    ol.num-list li {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      line-height: 1.45;
+    }
+
+    ul.bullet-list li strong,
+    ol.num-list li strong {
+      color: var(--text-main);
+    }
+
+    /* ===== TITLE SLIDE ===== */
+    .slide--title {
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+      padding: 40px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      background: rgba(30, 58, 138, 0.08);
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .slide--title h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.25;
+      margin-bottom: 12px;
+      max-width: 850px;
+    }
+
+    .slide--title .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin-bottom: 36px;
+      line-height: 1.55;
+    }
+
+    .authors-row {
+      display: flex;
+      gap: 28px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .author-pill {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      padding: 8px 18px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .author-pill .name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .author-pill .id {
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      color: var(--text-sub);
+    }
+
+    .course-text {
+      font-size: 0.82rem;
+      color: var(--text-sub);
+    }
+
+    /* ===== VIDEO CONTAINER ===== */
+    .video-wrap {
+      width: 100%;
+      max-width: 720px;
+      aspect-ratio: 16/9;
+      margin: 0 auto;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      background: #000;
+    }
+
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ===== SVG ARCHITECTURE ===== */
+    .svg-wrap {
+      width: 100%;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* ===== SUB-HEADING ===== */
+    .sub-head {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 12px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .sub-head:first-child {
+      margin-top: 0;
+    }
+
+    /* ===== FLOATING MINIMAL NAVIGATION ===== */
+    .floating-nav {
+      position: fixed;
+      bottom: 24px;
+      right: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+    }
+
+    .btn-nav {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
+      font-size: 0.9rem;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .btn-nav:hover {
+      background: var(--primary);
+      color: #FFFFFF;
+      border-color: var(--primary);
+    }
+
+    .btn-nav:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: #FFFFFF;
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="deck" id="deck">
+
+    <!-- ==================== SLIDE 1: TITLE ==================== -->
+    <div class="slide slide--title active" data-slide="0">
+      <div class="badge">Project Proposal</div>
+      <h1>Dual-Cart Kinematic Auto-Balancing System</h1>
+      <p class="subtitle">Real-Time PID Control on ATmega32 for Gravity-Driven Cart Alignment</p>
+
+      <div class="authors-row">
+        <div class="author-pill">
+          <div class="name">Md. Tahmid Hossain</div>
+          <div class="id">2205009</div>
+        </div>
+        <div class="author-pill">
+          <div class="name">Md. Ashraful Islam Fahim</div>
+          <div class="id">2205011</div>
+        </div>
+        <div class="author-pill">
+          <div class="name">Khandaker Tanvir Hossen</div>
+          <div class="id">2205013</div>
+        </div>
+      </div>
+
+      <div class="course-text">
+        <strong>Microprocessors, Microcontrollers and Embedded Systems Sessional</strong><br />
+        Department of Computer Science and Engineering, BUET
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 2: SIMULATION DEMO ==================== -->
+    <div class="slide" data-slide="1">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">Simulation Demo <span class="tag">Physics Model</span></div>
+        <div class="slide-counter">2 / 15</div>
+      </div>
+      <div class="slide-body" style="align-items: center; justify-content: center;">
+        <div class="video-wrap">
+          <video controls preload="metadata" id="simVideo">
+            <source src="Simulation.mp4" type="video/mp4" />
+            Your browser does not support HTML5 video playback.
+          </video>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-sub); margin-top: 10px; font-style: italic;">
+          p5.js 2D physics simulation showing PID-controlled beam tilting and dynamic cart alignment.
+        </p>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 3: MOTIVATION ==================== -->
+    <div class="slide" data-slide="2">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">1. Motivation <span class="tag">Overview</span></div>
+        <div class="slide-counter">3 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card-grid cols-2">
+          <div class="card card--highlight">
+            <div class="card-title">Problem Description</div>
+            <div class="card-text">
+              Controlling an object on an <strong>underactuated system</strong> --- where the top cart has no direct
+              motor or driving belt attached. Its position must be controlled purely through <em>gravity
+                manipulation</em> by dynamically tilting the beam beneath it.
+            </div>
+          </div>
+          <div class="card card--accent">
+            <div class="card-title">Why It Is Important</div>
+            <div class="card-text">
+              Mirrors real-world engineering challenges like anti-sway container crane control, dynamic ship deck
+              stabilization, and self-balancing transport robotics.
+            </div>
+          </div>
+        </div>
+
+        <div class="card-grid cols-2">
+          <div class="card">
+            <div class="card-title">Why Selected</div>
+            <div class="card-text">
+              Integrates embedded C programming, real-time feedback control theory (PID), microcontroller peripherals
+              (I2C, Timers, PWM), and mechanical linkage synthesis.
+            </div>
+          </div>
+          <div class="card card--alert">
+            <div class="card-title">Main Objectives</div>
+            <div class="card-text">
+              <ul class="bullet-list">
+                <li>Build a physical track rig to dynamically balance the top cart above a target lower cart.</li>
+                <li>Maintain steady-state position accuracy within <strong>&plusmn;10 mm</strong>.</li>
+                <li>Run the control loop deterministically at <strong>100 Hz</strong> on ATmega32.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 4: EQUIPMENT ==================== -->
+    <div class="slide" data-slide="3">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">2. Equipment <span class="tag">Hardware &amp; Tools</span></div>
+        <div class="slide-counter">4 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="sub-head">Hardware Components</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th style="width: 50px;">Qty</th>
+                <th>Purpose in System</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>ATmega32 MCU</strong></td>
+                <td>1</td>
+                <td>Central controller running real-time control loops and timing.</td>
+              </tr>
+              <tr>
+                <td><strong>VL53L0X ToF Sensors</strong></td>
+                <td>2</td>
+                <td>Laser distance sensors measuring cart positions over I2C.</td>
+              </tr>
+              <tr>
+                <td><strong>MG996R Servo Motor</strong></td>
+                <td>1</td>
+                <td>High-torque motor driving the 2-bar linkage to tilt the beam.</td>
+              </tr>
+              <tr>
+                <td><strong>5V / 3A Power Supply</strong></td>
+                <td>1</td>
+                <td>Dedicated power supply isolating motor noise from MCU logic.</td>
+              </tr>
+              <tr>
+                <td><strong>Decoupling Capacitor (1000 &mu;F)</strong></td>
+                <td>1</td>
+                <td>Absorbs transient electrical spikes from servo reversals.</td>
+              </tr>
+              <tr>
+                <td><strong>Chassis &amp; Guide Rails</strong></td>
+                <td>1 Set</td>
+                <td>Steel guide rods, linear bearings, laser-cut beam, linkage arm.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sub-head">Software &amp; Design Tools</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Application</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>AVR-GCC &amp; Microchip Studio</strong></td>
+                <td>Bare-metal C code compilation and programming.</td>
+              </tr>
+              <tr>
+                <td><strong>USBasp &amp; AVRDUDE</strong></td>
+                <td>Flashing firmware to ATmega32 flash memory.</td>
+              </tr>
+              <tr>
+                <td><strong>SolidWorks</strong></td>
+                <td>3D chassis modeling and linkage clearance checks.</td>
+              </tr>
+              <tr>
+                <td><strong>p5.js</strong></td>
+                <td>2D physics simulation for PID tuning &amp; kinematics.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 5: CONTROL FUNDAMENTALS (PID & PHYSICS) ==================== -->
+    <div class="slide" data-slide="4">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">3. System Design <span class="tag">Control Fundamentals</span></div>
+        <div class="slide-counter">5 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card-grid cols-2">
+          <div class="card card--highlight">
+            <div class="card-title">Underactuated Gravity Physics</div>
+            <div class="card-text">
+              The top cart is <strong>passive</strong> (no motor or cable attached). Acceleration is generated
+              indirectly by tilting the beam at angle \(\theta\):
+              <div class="math-box"
+                style="background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin: 8px 0; text-align: center;">
+                \[ F_{\text{net}} = m \cdot g \cdot \sin(\theta) - F_{\text{friction}} \]
+              </div>
+              Adjusting beam tilt angle \(\theta\) dynamically controls cart acceleration towards target position.
+            </div>
+          </div>
+
+          <div class="card card--accent">
+            <div class="card-title">Closed-Loop Error Feedback</div>
+            <div class="card-text">
+              Distance sensors continuously measure positions at <strong>100 Hz</strong>:
+              <div class="math-box"
+                style="background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin: 8px 0; text-align: center;">
+                \[ e(t) = X_{\text{lower}}(t) - X_{\text{upper}}(t) \]
+              </div>
+              The MCU calculates error \(e(t)\) and computes the required beam angle using discrete PID control.
+            </div>
+          </div>
+        </div>
+
+        <div class="card card--highlight" style="margin-bottom: 12px; padding: 12px 16px;">
+          <div class="card-title" style="font-size: 0.88rem;">Complete PID Control Equation</div>
+          <div style="text-align: center; font-size: 1.05rem;">
+            \[ u(t) = K_p \, e(t) \;+\; K_i \int_{0}^{t} e(\tau)\, d\tau \;+\; K_d \, \frac{de(t)}{dt} \]
+          </div>
+        </div>
+
+        <div class="sub-head">PID Control Term Breakdown</div>
+        <div class="card-grid cols-3">
+          <div class="card">
+            <div class="card-title" style="color: var(--primary-light);">Proportional (P)</div>
+            <div class="card-text">
+              <div style="text-align: center; margin-bottom: 6px; font-weight: 600;">\( P_{\text{out}} = K_p \cdot e(t)
+                \)</div>
+              Provides immediate tilt force proportional to current position error. Drives cart towards target.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: var(--accent);">Integral (I)</div>
+            <div class="card-text">
+              <div style="text-align: center; margin-bottom: 6px; font-weight: 600;">\( I_{\text{out}} = K_i \int e(t)
+                \, dt \)</div>
+              Accumulates residual error over time to eliminate steady-state offset and overcome track friction.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="color: var(--danger);">Derivative (D)</div>
+            <div class="card-text">
+              <div style="text-align: center; margin-bottom: 6px; font-weight: 600;">\( D_{\text{out}} = K_d \cdot
+                \frac{de(t)}{dt} \)</div>
+              Predicts future motion based on error rate of change. Dampens oscillations and prevents overshoot.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 6: SYSTEM ARCHITECTURE ==================== -->
+    <div class="slide" data-slide="5">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">3. System Design <span class="tag">Architecture</span></div>
+        <div class="slide-counter">6 / 15</div>
+      </div>
+      <div class="slide-body" style="align-items: center;">
+        <div class="svg-wrap" style="max-width: 860px; width: 100%;">
+          <svg width="840" height="390" viewBox="0 0 840 390" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6"
+                orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#3B82F6" />
+              </marker>
+              <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6"
+                orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#E11D48" />
+              </marker>
+            </defs>
+
+            <!-- Legend -->
+            <rect x="20" y="8" width="14" height="14" fill="#EFF6FF" stroke="#1E3A8A" stroke-width="1.5" rx="3" />
+            <text x="38" y="19" font-size="11" fill="#1E3A8A" font-weight="600">System</text>
+            <rect x="100" y="8" width="14" height="14" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5" rx="3" />
+            <text x="118" y="19" font-size="11" fill="#E11D48" font-weight="600">Hardware</text>
+            <rect x="190" y="8" width="14" height="14" fill="#F0FDF4" stroke="#0D9488" stroke-width="1.5" rx="3" />
+            <text x="208" y="19" font-size="11" fill="#0D9488" font-weight="600">I/O</text>
+
+            <!-- TOP ROW: Carts -->
+            <!-- Lower Cart (Manual Target) -->
+            <g transform="translate(80, 40)">
+              <rect width="180" height="48" fill="#EFF6FF" stroke="#1E3A8A" stroke-width="2" rx="6" />
+              <text x="90" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#1E3A8A">Lower Cart</text>
+              <text x="90" y="37" text-anchor="middle" font-size="10" fill="#475569">(Manual Target)</text>
+            </g>
+
+            <!-- Upper Cart (Passive / Rolling) -->
+            <g transform="translate(580, 40)">
+              <rect width="180" height="48" fill="#F0FDF4" stroke="#0D9488" stroke-width="2" rx="6" />
+              <text x="90" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#0D9488">Upper Cart</text>
+              <text x="90" y="37" text-anchor="middle" font-size="10" fill="#475569">(Passive / Rolling)</text>
+            </g>
+
+            <!-- MIDDLE ROW: Sensors, I2C, MCU -->
+            <!-- VL53L0X Sensor 1 (Lower Cart) -->
+            <g transform="translate(80, 135)">
+              <rect width="180" height="48" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.8" rx="6" />
+              <text x="90" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#E11D48">VL53L0X Sensor
+                1</text>
+              <text x="90" y="37" text-anchor="middle" font-size="10" fill="#64748B">Addr: 0x30 (X_lower)</text>
+            </g>
+
+            <!-- Shared I2C Bus -->
+            <g transform="translate(340, 135)">
+              <rect width="160" height="48" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="4"
+                rx="6" />
+              <text x="80" y="21" text-anchor="middle" font-size="11" font-weight="700" fill="#1E3A8A">Hardware I2C
+                Bus</text>
+              <text x="80" y="37" text-anchor="middle" font-size="10" fill="#3B82F6">Fast Mode (400 kHz)</text>
+            </g>
+
+            <!-- VL53L0X Sensor 2 (Upper Cart) -->
+            <g transform="translate(580, 135)">
+              <rect width="180" height="48" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.8" rx="6" />
+              <text x="90" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#E11D48">VL53L0X Sensor
+                2</text>
+              <text x="90" y="37" text-anchor="middle" font-size="10" fill="#64748B">Addr: 0x29 (X_upper)</text>
+            </g>
+
+            <!-- ATmega32 MCU -->
+            <g transform="translate(310, 225)">
+              <rect width="220" height="54" fill="#EFF6FF" stroke="#1E3A8A" stroke-width="2.5" rx="6" />
+              <text x="110" y="23" text-anchor="middle" font-size="13" font-weight="800" fill="#1E3A8A">ATmega32
+                MCU</text>
+              <text x="110" y="41" text-anchor="middle" font-size="10" fill="#3B82F6" font-weight="600">100 Hz PID Loop
+                · Kinematics</text>
+            </g>
+
+            <!-- BOTTOM ROW: Actuators & Telemetry -->
+            <!-- MG996R Servo Motor -->
+            <g transform="translate(50, 315)">
+              <rect width="160" height="48" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.8" rx="6" />
+              <text x="80" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#E11D48">MG996R
+                Servo</text>
+              <text x="80" y="37" text-anchor="middle" font-size="10" fill="#64748B">Pin PD5 (16-bit PWM)</text>
+            </g>
+
+            <!-- Tilting Beam -->
+            <g transform="translate(320, 315)">
+              <rect width="160" height="48" fill="#EFF6FF" stroke="#1E3A8A" stroke-width="2" rx="6" />
+              <text x="80" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#1E3A8A">Tilting
+                Beam</text>
+              <text x="80" y="37" text-anchor="middle" font-size="10" fill="#475569">2-Bar Linkage</text>
+            </g>
+
+            <!-- PC Terminal -->
+            <g transform="translate(600, 315)">
+              <rect width="160" height="48" fill="#F0FDF4" stroke="#0D9488" stroke-width="1.8" rx="6" />
+              <text x="80" y="21" text-anchor="middle" font-size="12" font-weight="700" fill="#0D9488">PC
+                Terminal</text>
+              <text x="80" y="37" text-anchor="middle" font-size="10" fill="#64748B">115,200 baud Serial</text>
+            </g>
+
+            <!-- CONNECTING ARROWS & LABELS -->
+            <!-- Sensor 1 <-> Lower Cart (Laser Distance) -->
+            <path d="M 170 88 L 170 135" fill="none" stroke="#E11D48" stroke-width="1.8" stroke-dasharray="3"
+              marker-start="url(#arrow-red)" marker-end="url(#arrow-red)" />
+            <text x="178" y="115" font-size="10" fill="#E11D48" font-weight="600">Laser Reflection</text>
+
+            <!-- Sensor 2 <-> Upper Cart (Laser Distance) -->
+            <path d="M 670 88 L 670 135" fill="none" stroke="#E11D48" stroke-width="1.8" stroke-dasharray="3"
+              marker-start="url(#arrow-red)" marker-end="url(#arrow-red)" />
+            <text x="678" y="115" font-size="10" fill="#E11D48" font-weight="600">Laser Reflection</text>
+
+            <!-- Sensor 1 -> I2C Bus -->
+            <path d="M 260 159 L 340 159" fill="none" stroke="#3B82F6" stroke-width="1.8" marker-end="url(#arrow)" />
+            <text x="300" y="153" text-anchor="middle" font-size="10" fill="#3B82F6">I2C</text>
+
+            <!-- Sensor 2 -> I2C Bus -->
+            <path d="M 580 159 L 500 159" fill="none" stroke="#3B82F6" stroke-width="1.8" marker-end="url(#arrow)" />
+            <text x="540" y="153" text-anchor="middle" font-size="10" fill="#3B82F6">I2C</text>
+
+            <!-- I2C Bus -> ATmega32 MCU -->
+            <path d="M 420 183 L 420 225" fill="none" stroke="#3B82F6" stroke-width="1.8" marker-end="url(#arrow)" />
+            <text x="430" y="208" font-size="10" fill="#1E3A8A" font-weight="600">Distance Data</text>
+
+            <!-- MCU -> Servo (PWM) -->
+            <path d="M 310 252 L 130 252 L 130 315" fill="none" stroke="#3B82F6" stroke-width="1.8"
+              marker-end="url(#arrow)" />
+            <text x="220" y="246" font-size="10" fill="#3B82F6" font-weight="600">16-bit PWM Signal</text>
+
+            <!-- Servo -> Tilting Beam (Mechanical Linkage) -->
+            <path d="M 210 339 L 320 339" fill="none" stroke="#3B82F6" stroke-width="1.8" marker-end="url(#arrow)" />
+            <text x="265" y="333" text-anchor="middle" font-size="10" fill="#3B82F6" font-weight="600">Tilt Angle
+              &theta;</text>
+
+            <!-- Tilting Beam -> Upper Cart (Gravity Acceleration) -->
+            <path d="M 400 315 L 400 290 L 640 290 L 640 88" fill="none" stroke="#E11D48" stroke-width="2"
+              stroke-dasharray="4" marker-end="url(#arrow-red)" />
+            <text x="520" y="284" font-size="10" fill="#E11D48" font-weight="700">Gravity Component
+              (Acceleration)</text>
+
+            <!-- MCU -> PC Terminal (USART) -->
+            <path d="M 530 252 L 680 252 L 680 315" fill="none" stroke="#0D9488" stroke-width="1.8"
+              marker-end="url(#arrow)" />
+            <text x="605" y="246" font-size="10" fill="#0D9488" font-weight="600">USART Telemetry</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 7: PINS & ROLES ==================== -->
+    <div class="slide" data-slide="6">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">3. System Design <span class="tag">Pins &amp; Components</span></div>
+        <div class="slide-counter">7 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="sub-head">ATmega32 Pin Connections</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pin</th>
+                <th>Interface</th>
+                <th>Function</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="code">PC0 (SCL)</td>
+                <td>TWI / I2C</td>
+                <td>I2C Clock line for both distance sensors.</td>
+              </tr>
+              <tr>
+                <td class="code">PC1 (SDA)</td>
+                <td>TWI / I2C</td>
+                <td>I2C Data line for streaming cart position measurements.</td>
+              </tr>
+              <tr>
+                <td class="code">PD5 (OC1A)</td>
+                <td>Timer1 PWM</td>
+                <td>16-bit Fast PWM signal to drive the servo motor angle.</td>
+              </tr>
+              <tr>
+                <td class="code">PB0, PB1</td>
+                <td>GPIO Output</td>
+                <td>XSHUT reset pins used to remap duplicate sensor I2C addresses on boot.</td>
+              </tr>
+              <tr>
+                <td class="code">PD1 (TXD)</td>
+                <td>USART</td>
+                <td>Serial transmit line for live diagnostic data to PC at 115,200 baud.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sub-head">Component Functions</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 180px;">Component</th>
+                <th>Primary Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>VL53L0X Sensors</strong></td>
+                <td>Measures linear positions of lower and upper carts accurately in real-time.</td>
+              </tr>
+              <tr>
+                <td><strong>ATmega32 MCU</strong></td>
+                <td>Calculates error, applies noise filter, computes PID angle, and updates PWM output.</td>
+              </tr>
+              <tr>
+                <td><strong>MG996R Servo &amp; Linkage</strong></td>
+                <td>Converts rotational shaft angle into physical tilt motion of the upper beam.</td>
+              </tr>
+              <tr>
+                <td><strong>Tilting Beam &amp; Cart</strong></td>
+                <td>Uses gravity to accelerate or decelerate the upper rolling cart toward the setpoint.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 8: ROLE OF ATMEGA32 (PROCESSING STEPS) ==================== -->
+    <div class="slide" data-slide="7">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">4. Role of the ATmega32 <span class="tag">Control Steps</span></div>
+        <div class="slide-counter">8 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card card--highlight" style="margin-bottom: 12px;">
+          <div class="card-title">Central Embedded Controller</div>
+          <div class="card-text">
+            The ATmega32 acts as the <strong>single central brain</strong> of the system, running bare-metal C at 16
+            MHz. It executes a continuous 5-step feedback loop every <strong>10 milliseconds (100 Hz)</strong> without
+            any operating system overhead.
+          </div>
+        </div>
+
+        <div class="sub-head">5-Step On-Chip Execution Loop</div>
+        <div class="card-grid cols-2" style="margin-bottom: 10px;">
+          <div class="card card--accent" style="padding: 12px 14px;">
+            <div class="card-title" style="font-size: 0.85rem;">Step 1: Distance Data Fetching</div>
+            <div class="card-text" style="font-size: 0.8rem;">
+              Communicates with both VL53L0X laser sensors over I2C at 400 kHz to read current lower cart
+              (\(X_{\text{lower}}\)) and upper cart (\(X_{\text{upper}}\)) millimeter positions.
+            </div>
+          </div>
+
+          <div class="card card--accent" style="padding: 12px 14px;">
+            <div class="card-title" style="font-size: 0.85rem;">Step 2: Digital Noise Filtering</div>
+            <div class="card-text" style="font-size: 0.8rem;">
+              Applies a 5-sample software moving-average low-pass filter inside the interrupt routine to remove optical
+              laser reflection spikes.
+            </div>
+          </div>
+        </div>
+
+        <div class="card-grid cols-3">
+          <div class="card">
+            <div class="card-title" style="font-size: 0.85rem;">Step 3: PID Calculation</div>
+            <div class="card-text" style="font-size: 0.78rem;">
+              Calculates error \(e(t) = X_{\text{lower}} - X_{\text{upper}}\), computes P, I, D terms with anti-windup
+              clamping, and maps error to required beam angle.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.85rem;">Step 4: Servo PWM Driving</div>
+            <div class="card-text" style="font-size: 0.78rem;">
+              Converts calculated beam angle into high-resolution 50 Hz PWM electrical pulses (1.0–2.0 ms pulse width)
+              sent directly to the servo motor.
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size: 0.85rem;">Step 5: Telemetry Streaming</div>
+            <div class="card-text" style="font-size: 0.78rem;">
+              Transmits live position and error numbers over serial interface (115,200 baud) to a PC terminal for
+              real-time graphing and tuning.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 9: ROLE OF ATMEGA32 (PERIPHERALS) ==================== -->
+    <div class="slide" data-slide="8">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">4. Role of the ATmega32 <span class="tag">Hardware Peripherals</span></div>
+        <div class="slide-counter">9 / 15</div>
+      </div>
+      <div class="slide-body">
+        <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 12px;">
+          The ATmega32 utilizes its built-in hardware peripherals to execute all sensing, timing, motor control, and
+          communications efficiently without needing external helper chips.
+        </p>
+
+        <div class="sub-head">Internal Hardware Modules &amp; Configurations</div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Hardware Module</th>
+                <th>Register Configuration</th>
+                <th>How It Works</th>
+                <th>Why It Is Essential</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Timer0 (8-bit Counter)</strong></td>
+                <td>CTC Mode, /1024<br /><code class="code">OCR0 = 155</code></td>
+                <td>Fires a hardware interrupt (<code
+                    style="font-family:var(--font-mono); font-size:0.75rem;">TIMER0_COMPA_vect</code>) every 10 ms (100
+                  Hz).</td>
+                <td>Guarantees deterministic, perfectly timed PID loop execution without timing jitter.</td>
+              </tr>
+              <tr>
+                <td><strong>Timer1 (16-bit Counter)</strong></td>
+                <td>Fast PWM Mode 14, /8<br /><code class="code">ICR1 = 40000</code>, Pin <code class="code">PD5</code>
+                </td>
+                <td>Generates a continuous 50 Hz PWM signal with <code class="code">OCR1A</code> pulse width control
+                  (1.0–2.0 ms).</td>
+                <td>Provides sub-degree micro-step resolution to tilt the beam smoothly via the servo motor.</td>
+              </tr>
+              <tr>
+                <td><strong>Hardware TWI (I2C)</strong></td>
+                <td>Master Mode, 400 kHz<br />Pins <code class="code">PC0 (SCL)</code> &amp; <code
+                    class="code">PC1 (SDA)</code></td>
+                <td>Reads digital distance bytes rapidly from both laser sensors over a shared 2-wire bus.</td>
+                <td>Frees CPU from bit-banging software I2C, allowing high-speed 400 kHz sensor polling.</td>
+              </tr>
+              <tr>
+                <td><strong>GPIO Control Pins</strong></td>
+                <td>Digital Output<br />Pins <code class="code">PB0</code> &amp; <code class="code">PB1</code></td>
+                <td>Connected to sensor XSHUT reset lines to power up sensors sequentially on boot.</td>
+                <td>Resolves factory default address collision by remapping Sensor 1 to address 0x30.</td>
+              </tr>
+              <tr>
+                <td><strong>USART Serial Module</strong></td>
+                <td>TX Mode, 115,200 Baud<br /><code class="code">UBRR = 8</code>, Pin <code class="code">PD1</code>
+                </td>
+                <td>Transmits live cart positions and alignment error data to PC terminal.</td>
+                <td>Enables real-time graphical monitoring and precise PID gain tuning.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card card--accent" style="margin-top: 6px;">
+          <div class="card-text" style="font-size: 0.78rem;">
+            <strong>Design Efficiency Note:</strong> Internal ADC and SPI modules are not used as all sensor
+            communication is handled digitally via I2C.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 10: IMPLEMENTATION PLAN (SIMPLIFIED) ==================== -->
+    <div class="slide" data-slide="9">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">5. Implementation Plan <span class="tag">Project Stages</span></div>
+        <div class="slide-counter">10 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card card--accent" style="margin-bottom: 16px;">
+          <div class="card-title">Expected Target</div>
+          <div class="card-text">
+            A physical dual-track rig where moving the lower cart manually forces the top cart to smoothly align
+            directly above it within <strong>&plusmn;10 mm accuracy</strong> in under <strong>2.5 seconds</strong>.
+          </div>
+        </div>
+
+        <div class="sub-head">Project Development Stages</div>
+        <div class="card-grid cols-2" style="margin-top: 8px;">
+          <div class="card card--highlight" style="padding: 18px;">
+            <div
+              style="font-size: 0.75rem; font-weight: 700; color: var(--primary-light); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+              STAGE 1</div>
+            <div class="card-title" style="font-size: 1.05rem; margin-bottom: 10px;">Open-Loop &amp; Hardware
+              Integration</div>
+            <ul class="bullet-list">
+              <li><strong>Physical Assembly:</strong> Built 3D chassis, guide rails, and wooden tilting beam.</li>
+              <li><strong>Hardware Drivers:</strong> Developed bare-metal C drivers for I2C, PWM, and serial
+                communication.</li>
+              <li><strong>Sensor Setup:</strong> Configured dual ToF laser sensors on a single I2C bus using XSHUT
+                address remapping.</li>
+              <li><strong>Open-Loop Testing:</strong> Verified beam tilting by sending manual servo angle commands.</li>
+            </ul>
+          </div>
+
+          <div class="card card--accent" style="padding: 18px;">
+            <div
+              style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+              STAGE 2</div>
+            <div class="card-title" style="font-size: 1.05rem; margin-bottom: 10px;">Closed-Loop PID &amp; System Tuning
+            </div>
+            <ul class="bullet-list">
+              <li><strong>Real-Time Pipeline:</strong> Programmed 100 Hz timer interrupt loop with a 5-sample noise
+                filter.</li>
+              <li><strong>PID Logic:</strong> Implemented discrete PID control algorithm with anti-windup clamping.</li>
+              <li><strong>Gain Tuning:</strong> Fine-tuned K<sub>p</sub>, K<sub>i</sub>, K<sub>d</sub> parameters using
+                real-time serial telemetry graphs.</li>
+              <li><strong>Performance Testing:</strong> Verified &le; &plusmn;10 mm alignment accuracy and &lt; 2.5 s
+                settling time.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 11: RESPONSIBILITIES ==================== -->
+    <div class="slide" data-slide="10">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">5. Responsibilities <span class="tag">Team Roles</span></div>
+        <div class="slide-counter">11 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card-grid cols-3">
+          <div class="card card--highlight">
+            <div class="card-title">Md. Tahmid Hossain</div>
+
+            <ul class="bullet-list">
+              <li>Will create 2D physics and PID control simulation models in p5.js.</li>
+              <li>Will write the 100 Hz interrupt pipeline, PID calculations, and digital noise filtering routines.</li>
+              <li>Will lead physical PID parameter tuning (\(K_p, K_i, K_d\)) and step-response verification.</li>
+            </ul>
+          </div>
+
+          <div class="card card--accent">
+            <div class="card-title">Md. Ashraful Islam Fahim</div>
+
+            <ul class="bullet-list">
+              <li>Will develop bare-metal C drivers for hardware I2C, Timer1 Fast PWM, and USART interfaces.</li>
+              <li>Will program sensor boot sequencing and I2C address remapping logic via XSHUT GPIO pins.</li>
+              <li>Will implement serial telemetry data streaming for PC terminal plotting.</li>
+            </ul>
+          </div>
+
+          <div class="card card--alert">
+            <div class="card-title">Khandaker Tanvir Hossen</div>
+
+            <ul class="bullet-list">
+              <li>Will design 3D chassis components, pivot mounts, and 2-bar linkage in SolidWorks.</li>
+              <li>Will fabricate physical track assembly, bearing rails, and wooden tilting beam.</li>
+              <li>Will design isolated motor power wiring and decoupling noise filter circuitry.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 12: OTHER CONTROLLERS ==================== -->
+    <div class="slide" data-slide="11">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">6. Microcontroller Selection <span class="tag">Design Rationale</span></div>
+        <div class="slide-counter">12 / 15</div>
+      </div>
+      <div class="slide-body" style="justify-content: center; align-items: center;">
+        <div class="card card--alert" style="max-width: 680px; text-align: center; padding: 24px;">
+          <div class="card-title" style="justify-content: center; font-size: 1.05rem; margin-bottom: 12px;">
+            No Secondary Microcontroller Required
+          </div>
+          <div class="card-text" style="font-size: 0.9rem; line-height: 1.6;">
+            No additional controller (such as ESP32, Arduino, or Raspberry Pi) is used or required in this
+            project.<br /><br />
+            <strong>Reasoning:</strong> The standalone <strong>ATmega32 MCU</strong> has sufficient built-in hardware
+            peripherals (I2C, 8-bit Timer, 16-bit Fast PWM, USART) to process sensor readings, compute PID math, drive
+            the motor, and stream diagnostic telemetry independently without needing helper boards.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 13: TESTING & SUCCESS ==================== -->
+    <div class="slide" data-slide="12">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">7. Testing &amp; Results <span class="tag">Evaluation</span></div>
+        <div class="slide-counter">13 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="card-grid cols-2">
+          <div class="card">
+            <div class="card-title">Testing Procedures</div>
+            <ul class="bullet-list">
+              <li><strong>Sensor Calibration:</strong> Place carts at measured marks to verify distance readings and
+                filter performance.</li>
+              <li><strong>Actuator Test:</strong> Step through PWM values to verify smooth beam tilt without mechanical
+                binding.</li>
+              <li><strong>Step Response:</strong> Move lower cart by 20 cm and log recovery trajectory over telemetry.
+              </li>
+            </ul>
+          </div>
+
+          <div class="card card--accent">
+            <div class="card-title">Measurable Success Targets</div>
+            <table class="data-table" style="margin-top: 6px;">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Target Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Control Loop Rate</strong></td>
+                  <td>100 Hz &plusmn; 0.1 Hz (10 ms)</td>
+                </tr>
+                <tr>
+                  <td><strong>Steady-State Accuracy</strong></td>
+                  <td>&le; &plusmn;10 mm alignment error</td>
+                </tr>
+                <tr>
+                  <td><strong>Settling Time</strong></td>
+                  <td>&lt; 2.5 s (following 20 cm step)</td>
+                </tr>
+                <tr>
+                  <td><strong>Overshoot</strong></td>
+                  <td>&lt; 15% transient overshoot</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Feature Summary</div>
+          <ul class="bullet-list">
+            <li><strong>Essential Features:</strong> Dual laser ToF sensing on single I2C bus, 100 Hz hardware interrupt
+              loop, 16-bit PWM servo driving, closed-loop PID control algorithm.</li>
+            <li><strong>Bonus Features:</strong> Real-time serial telemetry graphing on PC, software error deadband
+              (&plusmn;3 mm) to suppress mechanical gear chatter.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 14: TECHNICAL CHALLENGES & FUTURE SCOPE ==================== -->
+    <div class="slide" data-slide="13">
+      <div class="top-progress-bar">
+        <div class="top-progress-fill"></div>
+      </div>
+      <div class="slide-header">
+        <div class="header-title">8. Technical Challenges &amp; Future Scope <span class="tag">Insights</span></div>
+        <div class="slide-counter">14 / 15</div>
+      </div>
+      <div class="slide-body">
+        <div class="sub-head">Challenges &amp; Engineering Solutions</div>
+        <div class="card-grid cols-3">
+          <div class="card card--alert">
+            <div class="card-title">Optical Sensor Noise</div>
+            <div class="card-text">
+              Laser distance sensors experienced optical noise spikes.<br /><br />
+              <strong>Solution:</strong> Added a 5-sample software moving-average filter inside the 100 Hz interrupt
+              loop.
+            </div>
+          </div>
+
+          <div class="card card--alert">
+            <div class="card-title">Linkage Backlash</div>
+            <div class="card-text">
+              Mechanical slack in servo gears caused minor jitter near target.<br /><br />
+              <strong>Solution:</strong> Applied a &plusmn;3 mm software deadband and tuned derivative gain
+              (K<sub>d</sub>).
+            </div>
+          </div>
+
+          <div class="card card--alert">
+            <div class="card-title">Motor Current Spikes</div>
+            <div class="card-text">
+              Rapid motor direction changes caused MCU brownout resets.<br /><br />
+              <strong>Solution:</strong> Isolated motor power rail with 5V/3A supply and added 1000 &mu;F capacitor.
+            </div>
+          </div>
+        </div>
+
+        <div class="sub-head">Future Enhancements</div>
+        <div class="card">
+          <ul class="bullet-list">
+            <li><strong>2D Platform Expansion:</strong> Upgrade from 1D beam tilting to a 2D universal ball-joint
+              platform for multi-axis balancing.</li>
+            <li><strong>Advanced Control (LQR):</strong> Transition from classical PID to Linear Quadratic Regulator
+              control for improved energy efficiency.</li>
+            <li><strong>Wireless Telemetry:</strong> Add Bluetooth module to USART interface for wireless data logging
+              and remote tuning.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 15: THANK YOU ==================== -->
+    <div class="slide slide--title" data-slide="14">
+
+      <h1 style="font-size: 2.3rem;">Thank You</h1>
+
+
+
+    </div>
+
+  </div>
+
+  <!-- ===== FLOATING NAVIGATION ===== -->
+  <div class="floating-nav">
+    <button class="btn-nav" id="prevBtn" onclick="prevSlide()" disabled>&larr;</button>
+    <button class="btn-nav" id="nextBtn" onclick="nextSlide()">&rarr;</button>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let current = 0;
+
+    function goTo(n) {
+      if (n < 0 || n >= total || n === current) return;
+      slides[current].classList.remove('active');
+      current = n;
+      slides[current].classList.add('active');
+      updateNav();
+    }
+
+    function nextSlide() { goTo(current + 1); }
+    function prevSlide() { goTo(current - 1); }
+
+    function updateNav() {
+      document.getElementById('prevBtn').disabled = (current === 0);
+      document.getElementById('nextBtn').disabled = (current === total - 1);
+
+      // Update top progress bar fills across slides
+      const fillPercent = ((current + 1) / total) * 100;
+      document.querySelectorAll('.top-progress-fill').forEach(fill => {
+        fill.style.width = fillPercent + '%';
+      });
+
+      // Trigger MathJax typeset for rendered math formulas
+      if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+      if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+      if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+    });
+
+    // Touch swipe
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; });
+    document.addEventListener('touchend', (e) => {
+      const diff = touchStartX - e.changedTouches[0].screenX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) nextSlide();
+        else prevSlide();
+      }
+    });
+
+    updateNav();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+# AVR build output
+*.o
+*.elf
+*.hex
+*.map
+*.lst
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node
+node_modules/
+
+# LaTeX build files
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
